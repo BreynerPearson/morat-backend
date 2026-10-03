@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Picnic Moratero · Panel de organizadores</title>
+<script src="/vendor/jsQR.js"></script>
+<script src="/vendor/qrcode.min.js"></script>
+<style>
+  :root{--navy:#1f3a73;--cream:#f4ead2;--paper:#fbf5e6;--red:#b0212b;--gold:#f2c230;--ok:#2e7d4f;--line:#d9c9a0;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--navy);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:40px}
+  header{background:var(--navy);color:var(--cream);padding:18px 16px 14px;text-align:center}
+  header h1{margin:0;font-size:22px;letter-spacing:.5px;text-transform:uppercase}
+  header p{margin:4px 0 0;color:var(--gold);font-weight:700;font-size:13px}
+  main{max-width:640px;margin:0 auto;padding:14px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  .stat{background:var(--paper);border:2px solid var(--navy);border-radius:10px;text-align:center;padding:8px 4px}
+  .stat b{display:block;font-size:24px;color:var(--red)}
+  .stat span{font-size:11px;text-transform:uppercase;font-weight:700}
+  .bar{height:10px;background:#e6d8b3;border-radius:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+  .aforo{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin:6px 0 14px;gap:8px}
+  .aforo input{width:70px;padding:5px;border:1.5px solid var(--line);border-radius:6px;font-size:14px}
+  nav{display:flex;gap:8px;margin-bottom:12px}
+  nav button,.btn{flex:1;padding:11px;border:2px solid var(--navy);background:transparent;color:var(--navy);font-weight:700;border-radius:8px;font-size:14px;cursor:pointer}
+  nav button.on,.btn.primary{background:var(--navy);color:var(--cream)}
+  .card{background:var(--paper);border:2px solid var(--navy);border-radius:12px;padding:12px;margin-bottom:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  input[type=text],input[type=password],select{flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-size:15px;background:#fff;color:var(--navy)}
+  .guest{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--line);padding:10px 0}
+  .guest:last-child{border-bottom:0}
+  .nm{font-weight:700}
+  .meta{font-size:12px;opacity:.8}
+  .tag{font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;color:#fff}
+  .tag.pendiente{background:#8a7a4a}.tag.ingreso{background:var(--ok)}.tag.falta{background:var(--red)}
+  .acts{display:flex;gap:6px;flex-wrap:wrap}
+  .acts button{padding:7px 10px;border-radius:7px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);font-weight:700;font-size:12px;cursor:pointer}
+  .acts button:disabled{opacity:.4}
+  .acts .del{border-color:var(--red);color:var(--red)}
+  .hide{display:none!important}
+  #video{width:100%;border-radius:10px;background:#000;max-height:320px;object-fit:cover}
+  #scanMsg{margin-top:10px;padding:12px;border-radius:8px;font-weight:700;text-align:center;background:#fff;border:2px solid var(--line)}
+  #scanMsg.ok{border-color:var(--ok);color:var(--ok)}#scanMsg.warn{border-color:var(--gold);color:#8a6a00}#scanMsg.err{border-color:var(--red);color:var(--red)}
+  .modal{position:fixed;inset:0;background:rgba(15,30,60,.7);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+  .modal.show{display:flex}
+  .box{background:var(--paper);border:3px solid var(--navy);border-radius:14px;padding:20px;text-align:center;max-width:320px;width:100%}
+  .box h3{margin:0 0 4px}
+  #qrBox{display:flex;justify-content:center;background:#fff;padding:12px;border-radius:8px;margin:10px 0}
+  .err{color:var(--red);font-size:13px;margin:6px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Picnic Moratero</h1>
+  <p>Versión Balas Perdidas · Club de Fans Morat Cartagena</p>
+</header>
+
+<main id="app" class="hide">
+  <div class="stats">
+    <div class="stat"><b id="sTotal">0</b><span>Registrados</span></div>
+    <div class="stat"><b id="sIn">0</b><span>Ingresaron</span></div>
+    <div class="stat"><b id="sPend">0</b><span>Faltan</span></div>
+  </div>
+  <div class="bar"><i id="barra"></i></div>
+  <div class="aforo">
+    <span id="aforoTxt">0 / 50 cupos</span>
+    <label>Cupos: <input type="number" id="aforo" value="50" min="1" onchange="pintar()"></label>
+  </div>
+
+  <nav>
+    <button class="on" data-v="lista">Invitados</button>
+    <button data-v="scan">Escanear QR</button>
+  </nav>
+
+  <section id="v-lista">
+    <div class="card">
+      <div class="row">
+        <input type="text" id="nombre" placeholder="Nombre del asistente" onkeydown="if(event.key==='Enter')agregar()">
+        <select id="tipo"><option>Invitado</option><option>Artista</option><option>Staff</option></select>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn primary" onclick="agregar()">+ Registrar y generar código</button></div>
+    </div>
+    <div class="card">
+      <input type="text" id="buscar" placeholder="Buscar por nombre…" oninput="pintar()" style="width:100%">
+      <div id="lista"></div>
+    </div>
+  </section>
+
+  <section id="v-scan" class="hide">
+    <div class="card">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas" class="hide"></canvas>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnCam" onclick="iniciarCamara()">Activar cámara</button>
+        <button class="btn" onclick="detenerCamara()">Detener</button>
+      </div>
+      <div id="scanMsg">Apunta al QR del asistente</div>
+    </div>
+  </section>
+</main>
+
+<!-- PIN de organizadores (se valida en el servidor) -->
+<div class="modal show" id="pinModal">
+  <div class="box">
+    <h3>Panel de organizadores</h3>
+    <p style="font-size:13px;margin:0 0 10px">Ingresa el PIN para continuar.</p>
+    <div class="err hide" id="pinErr">PIN incorrecto.</div>
+    <input type="password" id="pin" placeholder="PIN" style="width:100%" onkeydown="if(event.key==='Enter')entrar()">
+    <div class="row" style="margin-top:10px"><button class="btn primary" onclick="entrar()">Entrar</button></div>
+  </div>
+</div>
+
+<!-- Modal QR -->
+<div class="modal" id="qrModal" onclick="if(event.target===this)cerrarQR()">
+  <div class="box">
+    <h3 id="qrNombre"></h3>
+    <div style="font-size:13px" id="qrCod"></div>
+    <div id="qrBox"></div>
+    <div class="row"><button class="btn primary" onclick="cerrarQR()">Cerrar</button></div>
+  </div>
+</div>
+
+<script>
+const API = "/api/eventos/picnic/invitados";
+let TOKEN = sessionStorage.getItem("picnicToken") || "";
+let invitados = [];
+
+async function api(path = "", opts = {}) {
+  const r = await fetch(API + path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", "x-admin-token": TOKEN, ...(opts.headers || {}) }
+  });
+  const d = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, d };
+}
+const esc = s => { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; };
+
+/* ---------- PIN ---------- */
+async function entrar() {
+  TOKEN = document.getElementById("pin").value.trim();
+  const r = await api("/stats/resumen");
+  if (r.status === 401) { document.getElementById("pinErr").classList.remove("hide"); return; }
+  sessionStorage.setItem("picnicToken", TOKEN);
+  document.getElementById("pinModal").classList.remove("show");
+  document.getElementById("app").classList.remove("hide");
+  cargar();
+}
+if (TOKEN) { api("/stats/resumen").then(r => { if (r.status !== 401) { document.getElementById("pinModal").classList.remove("show"); document.getElementById("app").classList.remove("hide"); cargar(); } }); }
+
+/* ---------- Datos ---------- */
+async function cargar() {
+  const r = await api("");
+  if (r.ok) { invitados = r.d.invitados; pintar(); }
+}
+
+function pintar() {
+  const q = document.getElementById("buscar").value.trim().toLowerCase();
+  const lista = document.getElementById("lista");
+  const vis = invitados.filter(p => p.nombre.toLowerCase().includes(q));
+  lista.innerHTML = vis.length ? vis.map(p => `
+    <div class="guest">
+      <div><div class="nm">${esc(p.nombre)}</div>
+      <div class="meta">${esc(p.tipo)} · ${esc(p.cod)}${p.horaIngreso ? " · ingresó " + esc(p.horaIngreso) : ""}</div></div>
+      <span class="tag ${p.estado}">${{pendiente:"PENDIENTE",ingreso:"INGRESÓ",falta:"NO ASISTIÓ"}[p.estado]}</span>
+      <div class="acts">
+        <button onclick="verQR(${p.id})">QR</button>
+        <button ${p.estado==="ingreso"?"disabled":""} onclick="marcar(${p.id},'ingreso')">Ingresó</button>
+        <button onclick="marcar(${p.id},'falta')">No asistió</button>
+        <button class="del" onclick="eliminar(${p.id})">✕</button>
+      </div>
+    </div>`).join("") : `<div class="meta" style="padding:12px;text-align:center">Sin resultados.</div>`;
+
+  const total = invitados.length, ing = invitados.filter(p => p.estado === "ingreso").length;
+  const aforo = Math.max(1, parseInt(document.getElementById("aforo").value, 10) || 1);
+  document.getElementById("sTotal").textContent = total;
+  document.getElementById("sIn").textContent = ing;
+  document.getElementById("sPend").textContent = total - ing;
+  document.getElementById("aforoTxt").textContent = `${total} / ${aforo} cupos registrados`;
+  document.getElementById("barra").style.width = Math.min(100, Math.round(total / aforo * 100)) + "%";
+}
+
+async function agregar() {
+  const el = document.getElementById("nombre"), nombre = el.value.trim();
+  if (!nombre) return;
+  const r = await api("", { method: "POST", body: JSON.stringify({ nombre, tipo: document.getElementById("tipo").value }) });
+  if (!r.ok) return alert(r.d.error || "No se pudo registrar.");
+  el.value = ""; await cargar(); verQR(r.d.invitado.id);
+}
+async function marcar(id, estado) {
+  const p = invitados.find(x => x.id === id); if (!p) return;
+  const r = estado === "ingreso"
+    ? await api("/ingreso/" + encodeURIComponent(p.cod), { method: "PATCH" })
+    : await api(`/${id}/estado`, { method: "PATCH", body: JSON.stringify({ estado }) });
+  if (!r.ok) alert(r.d.error || "No se pudo actualizar.");
+  cargar();
+}
+async function eliminar(id) {
+  if (!confirm("¿Eliminar este invitado?")) return;
+  await api("/" + id, { method: "DELETE" }); cargar();
+}
+
+/* ---------- QR ---------- */
+function verQR(id) {
+  const p = invitados.find(x => x.id === id); if (!p) return;
+  document.getElementById("qrNombre").textContent = p.nombre;
+  document.getElementById("qrCod").textContent = p.cod;
+  const box = document.getElementById("qrBox"); box.innerHTML = "";
+  new QRCode(box, { text: p.cod, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById("qrModal").classList.add("show");
+}
+function cerrarQR() { document.getElementById("qrModal").classList.remove("show"); }
+
+/* ---------- Escáner ---------- */
+let stream = null, escaneando = false, ultimo = "", ultimoT = 0;
+const msg = (t, c) => { const m = document.getElementById("scanMsg"); m.textContent = t; m.className = c || ""; };
+
+async function iniciarCamara() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    const v = document.getElementById("video"); v.srcObject = stream; await v.play();
+    escaneando = true; msg("Escaneando…"); loop();
+  } catch (e) { msg("No se pudo abrir la cámara (revisa permisos y que uses https).", "err"); }
+}
+function detenerCamara() {
+  escaneando = false;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+function loop() {
+  if (!escaneando) return;
+  const v = document.getElementById("video"), c = document.getElementById("canvas");
+  if (v.readyState === v.HAVE_ENOUGH_DATA) {
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(v, 0, 0, c.width, c.height);
+    const img = ctx.getImageData(0, 0, c.width, c.height);
+    const code = jsQR(img.data, img.width, img.height);
+    if (code && code.data && (code.data !== ultimo || Date.now() - ultimoT > 4000)) {
+      ultimo = code.data; ultimoT = Date.now(); registrarScan(code.data.trim());
+    }
+  }
+  requestAnimationFrame(loop);
+}
+async function registrarScan(cod) {
+  const r = await api("/ingreso/" + encodeURIComponent(cod), { method: "PATCH" });
+  if (r.ok) msg(r.d.mensaje || "Bienvenido ✓", "ok");
+  else if (r.status === 409) msg(`⚠️ ${r.d.invitado ? r.d.invitado.nombre + " — " : ""}ya había ingresado`, "warn");
+  else msg(r.d.error || "Código no reconocido", "err");
+  cargar();
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+  document.getElementById("v-lista").classList.toggle("hide", b.dataset.v !== "lista");
+  document.getElementById("v-scan").classList.toggle("hide", b.dataset.v !== "scan");
+  if (b.dataset.v !== "scan") detenerCamara();
+}));
+</script>
+</body>
+</html>
