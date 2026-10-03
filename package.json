@@ -1,0 +1,20 @@
+{
+  "name": "morat-karaoke-backend",
+  "version": "1.0.0",
+  "description": "API REST para gestión de invitados y control de ingreso - Karaoke Morat",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["morat", "karaoke", "invitados", "checkin", "api"],
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
